@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Public Domain Book Library | Bocaletto Luca</title>
+  <meta name="description" content="Search and download public‐domain books via free APIs: Project Gutenberg, Open Library, Internet Archive. Built by Bocaletto Luca.">
+  <meta name="keywords" content="public domain books, free ebooks, Project Gutenberg API, Open Library API, Internet Archive API, Bocaletto Luca, GitHub">
+  <meta name="author" content="Bocaletto Luca">
+  <!-- Open Graph -->
+  <meta property="og:title" content="Public Domain Book Library">
+  <meta property="og:description" content="One‐page app to search and download public‐domain books via free APIs.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourdomain.com/">
+  <meta property="og:site_name" content="Public Domain Book Library">
+  <!-- GitHub author link -->
+  <link rel="author" href="https://github.com/bocaletto-luca">
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      color: #333;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: #f4f4f4;
+      padding: 20px;
+      display: flex; flex-wrap: wrap; gap: 10px;
+      align-items: center;
+    }
+    header h1 { margin: 0 20px 0 0; font-size: 1.5rem; }
+    header select, header input, header button {
+      padding: 6px 10px; font-size: 1rem;
+    }
+    main {
+      flex: 1;
+      padding: 20px;
+    }
+    #results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.05);
+    }
+    .card h3 { margin: 0 0 8px; font-size: 1.1rem; }
+    .card p { margin: 4px 0; font-size: 0.9rem; color: #555; }
+    .card a {
+      margin-top: auto;
+      text-decoration: none;
+      color: #0066cc;
+      font-weight: bold;
+    }
+    #pagination {
+      text-align: center; margin: 20px 0;
+    }
+    #pagination button {
+      padding: 8px 12px; margin: 0 5px; font-size: 1rem;
+    }
+    #pageInfo { font-weight: bold; }
+    footer {
+      background: #f4f4f4;
+      text-align: center;
+      padding: 10px;
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: #0066cc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📚 Public Domain Books</h1>
+    <select id="service">
+      <option value="gutenberg">Project Gutenberg</option>
+      <option value="openlibrary">Open Library</option>
+      <option value="archive">Internet Archive</option>
+    </select>
+    <select id="searchField">
+      <option value="any">Any Field</option>
+      <option value="title">Title</option>
+      <option value="author">Author</option>
+    </select>
+    <input type="text" id="query" placeholder="Enter search term...">
+    <select id="language">
+      <option value="">Any Language</option>
+      <option value="en">English</option>
+      <option value="it">Italian</option>
+      <option value="es">Spanish</option>
+      <option value="fr">French</option>
+      <option value="de">German</option>
+      <option value="la">Latin</option>
+    </select>
+    <button id="searchBtn">Search</button>
+  </header>
+
+  <main>
+    <div id="results"></div>
+    <div id="pagination">
+      <button id="prev" disabled>← Previous</button>
+      <span id="pageInfo">Page 0 of 0</span>
+      <button id="next" disabled>Next →</button>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 Bocaletto Luca | 
+    <a href="https://github.com/bocaletto-luca" target="_blank">github.com/bocaletto-luca</a>
+  </footer>
+
+  <script>
+    const serviceEl  = document.getElementById('service');
+    const fieldEl    = document.getElementById('searchField');
+    const queryEl    = document.getElementById('query');
+    const langEl     = document.getElementById('language');
+    const btnSearch  = document.getElementById('searchBtn');
+    const resultsEl  = document.getElementById('results');
+    const btnPrev    = document.getElementById('prev');
+    const btnNext    = document.getElementById('next');
+    const pageInfoEl = document.getElementById('pageInfo');
+
+    let currentPage = 1;
+    let totalPages  = 1;
+
+    btnSearch.addEventListener('click', () => {
+      currentPage = 1;
+      fetchBooks();
+    });
+    btnPrev.addEventListener('click', () => {
+      if (currentPage > 1) { currentPage--; fetchBooks(); }
+    });
+    btnNext.addEventListener('click', () => {
+      if (currentPage < totalPages) { currentPage++; fetchBooks(); }
+    });
+
+    async function fetchBooks() {
+      const service = serviceEl.value;
+      const field   = fieldEl.value;
+      const q       = encodeURIComponent(queryEl.value.trim());
+      const lang    = langEl.value;
+      let url;
+
+      if (service === 'gutenberg') {
+        const params = new URLSearchParams();
+        if (q)    params.append('search', q);
+        if (lang) params.append('languages', lang);
+        params.append('page', currentPage);
+        url = `https://gutendex.com/books?${params}`;
+
+      } else if (service === 'openlibrary') {
+        const params = new URLSearchParams();
+        if (q) {
+          if (field === 'title')  params.append('title', q);
+          else if (field === 'author') params.append('author', q);
+          else params.append('q', q);
+        }
+        if (lang) params.append('language', lang);
+        params.append('page', currentPage);
+        url = `https://openlibrary.org/search.json?${params}`;
+
+      } else { // Internet Archive
+        let parts = [];
+        if (q) {
+          if (field === 'title')  parts.push(`title:${q}`);
+          else if (field === 'author') parts.push(`creator:${q}`);
+          else parts.push(q);
+        } else {
+          parts.push('*');
+        }
+        if (lang) parts.push(`language:${lang}`);
+        parts.push('mediatype:texts');
+        const params = new URLSearchParams();
+        params.append('q', parts.join(' AND '));
+        params.append('fl[]', 'identifier');
+        params.append('fl[]', 'title');
+        params.append('fl[]', 'creator');
+        params.append('fl[]', 'date');
+        params.append('page', currentPage);
+        params.append('rows', 20);
+        params.append('output', 'json');
+        url = `https://archive.org/advancedsearch.php?${params}`;
+      }
+
+      resultsEl.innerHTML = '<p>Loading…</p>';
+      try {
+        const res  = await fetch(url);
+        const json = await res.json();
+        renderResults(service, json);
+      } catch (err) {
+        resultsEl.innerHTML = `<p>Error: ${err.message}</p>`;
+        totalPages = 1;
+        updatePager();
+      }
+    }
+
+    function renderResults(service, data) {
+      resultsEl.innerHTML = '';
+      if (service === 'gutenberg') {
+        const perPage = data.results.length;
+        totalPages = Math.ceil(data.count / perPage);
+        data.results.forEach(b => {
+          const authors = b.authors.map(a => a.name).join(', ') || 'N/A';
+          const link    = b.formats['application/epub+zip']
+                        || b.formats['text/plain; charset=utf-8']
+                        || '#';
+          appendCard(b.title, authors, 'N/A', link);
+        });
+
+      } else if (service === 'openlibrary') {
+        const perPage = 100;
+        totalPages = Math.ceil(data.numFound / perPage);
+        data.docs.forEach(b => {
+          const authors = (b.author_name || []).join(', ') || 'N/A';
+          const year    = b.first_publish_year || 'N/A';
+          const link    = `https://openlibrary.org${b.key}`;
+          appendCard(b.title, authors, year, link);
+        });
+
+      } else {
+        const resp = data.response;
+        totalPages = Math.ceil(resp.numFound / 20);
+        resp.docs.forEach(b => {
+          const authors = Array.isArray(b.creator)
+                        ? b.creator.join(', ')
+                        : b.creator || 'N/A';
+          const year    = b.date || 'N/A';
+          const link    = `https://archive.org/details/${b.identifier}`;
+          appendCard(b.title, authors, year, link);
+        });
+      }
+
+      updatePager();
+    }
+
+    function appendCard(title, authors, year, href) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h3>${title}</h3>
+        <p><strong>Author:</strong> ${authors}</p>
+        <p><strong>Year:</strong> ${year}</p>
+        <a href="${href}" target="_blank">Read / Download</a>
+      `;
+      resultsEl.appendChild(card);
+    }
+
+    function updatePager() {
+      pageInfoEl.textContent = `Page ${currentPage} of ${totalPages}`;
+      btnPrev.disabled = currentPage <= 1;
+      btnNext.disabled = currentPage >= totalPages;
+    }
+  </script>
+</body>
+</html>
